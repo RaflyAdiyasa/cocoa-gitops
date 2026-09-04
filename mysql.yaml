@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-set
+
+spec:
+  serviceName: svc-mysql
+
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: mysql-db
+
+  template:
+    metadata:
+      labels:
+        app: mysql-db
+
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: mysql
+          image: mysql:8.4
+
+          ports:
+            - name: mysql
+              containerPort: 3306
+
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: DB_NAME
+
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: DB_USER
+
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: DB_PASSWORD
+
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: DB_ROOT_PASSWORD
+
+          volumeMounts:
+            - name: helpdeskcocoa-db-pvc
+              mountPath: /var/lib/mysql
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >
+                  mysqladmin ping
+                  -h 127.0.0.1
+                  -uroot
+                  -p"$${MYSQL_ROOT_PASSWORD}"
+                  --silent
+
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 20
+
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >
+                  mysqladmin ping
+                  -h 127.0.0.1
+                  -uroot
+                  -p"$${MYSQL_ROOT_PASSWORD}"
+                  --silent
+
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+  volumeClaimTemplates:
+
+    - metadata:
+        name: helpdeskcocoa-db-pvc
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
