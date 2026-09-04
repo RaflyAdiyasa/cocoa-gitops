@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-set
+
+spec:
+  serviceName: svc-redis
+
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: redis-cache
+
+  template:
+    metadata:
+      labels:
+        app: redis-cache
+
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: redis
+          image: redis:7-alpine
+
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+
+          ports:
+            - containerPort: 6379
+
+          volumeMounts:
+            - name: redis-storage-pvc
+              mountPath: /data
+
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 10
+
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+  volumeClaimTemplates:
+
+    - metadata:
+        name: redis-storage-pvc
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
