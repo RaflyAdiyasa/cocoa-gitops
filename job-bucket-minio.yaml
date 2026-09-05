@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+spec:
+  backoffLimit: 10
+
+  template:
+    metadata:
+      labels:
+        app: minio-init
+
+    spec:
+      restartPolicy: OnFailure
+
+      containers:
+        - name: create-bucket
+          image: minio/mc:latest
+
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: MINIO_ACCESSKEY
+
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: MINIO_SECRETKEY
+
+            - name: MINIO_BUCKETNAME
+              valueFrom:
+                secretKeyRef:
+                  name: helpdeskcocoa-secret
+                  key: MINIO_BUCKETNAME
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for MinIO..."
+
+              until mc alias set local \
+                http://svc-minio:9000 \
+                "$MINIO_ROOT_USER" \
+                "$MINIO_ROOT_PASSWORD"
+              do
+                echo "MinIO is not ready yet..."
+                sleep 2
+              done
+
+              echo "MinIO is ready"
+
+              mc mb \
+                --ignore-existing \
+                "local/$MINIO_BUCKETNAME"
+
+              echo "Bucket initialized successfully"
