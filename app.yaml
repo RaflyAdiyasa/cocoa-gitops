@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cocoa
+  namespace: argocd
+  finalizers:
+   - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cocoa
+  source:
+    repoURL: "https://github.com/RaflyAdiyasa/cocoa-gitops"
+    targetRevision: HEAD
+    path: dev
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: cocoa
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: helpdeskcocoa-api
+      jsonPointers:
+        - /spec/replicas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
