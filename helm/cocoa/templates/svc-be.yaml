@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.api.svc.name }}
+
+spec:
+  selector:
+    app: helpdeskcocoa-api
+
+  ports:
+    - port: 80
+      targetPort: {{ .Values.api.containerPort }}
+
+  type: ClusterIP

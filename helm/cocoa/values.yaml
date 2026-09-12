@@ -16,6 +16,8 @@ api:
       cpu: "300m"
 
   containerPort: 8080
+  svc:
+    name: cocoa-be
 
   env:
     port: "8080"
