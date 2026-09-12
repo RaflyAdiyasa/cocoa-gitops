@@ -115,16 +115,16 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.api.secret.name }}
-                  key: MINIO_ACCESSKEY
+                  key: rootUser
 
             - name: MINIO_SECRETKEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.api.secret.name }}
-                  key: MINIO_SECRETKEY
+                  key: rootPassword
 
             - name: MINIO_BUCKETNAME
-              value: {{ (index .Values.minio.provisioning.buckets 0).name | quote }}
+              value: {{ (index .Values.minio.buckets 0).name | quote }}
 
             - name: REDIS_ENDPOINT
               value: {{ .Values.api.env.redis.endpoint | quote }}

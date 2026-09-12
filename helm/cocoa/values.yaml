@@ -25,7 +25,7 @@ api:
       port: "3306"
 
     redis:
-      endpoint: cocoa-redis:6379
+      endpoint: cocoa-redis-master:6379
       db: "8"
 
     minio:
@@ -56,7 +56,7 @@ api:
 
     redis:
       enabled: true
-      host: cocoa-redis
+      host: cocoa-redis-master
       port: 6379
 
     minio:
@@ -98,17 +98,18 @@ redis:
 minio:
   mode: standalone
 
-  auth:
-    existingSecret: "helpdeskcocoa-secret"
-    rootUserSecretKey: "MINIO_ACCESSKEY"
-    rootPasswordSecretKey: "MINIO_SECRETKEY"
+  existingSecret: helpdeskcocoa-secret
 
-  provisioning:
-    enabled: true
-    buckets:
-      - name: "helpdeskcocoa-bucket" 
+  buckets:
+    - name: cocoa 
+      policy: none
+      purge: false
+      versioning: false
 
-  resourcesPreset: "nano"
+  resources:
+    requests:
+      memory: 128Mi
+
   persistence:
     enabled: true
     size: 5Gi
