@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helpdeskcocoa-api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app: helpdeskcocoa-api
+  template:
+    metadata:
+      labels:
+        app: helpdeskcocoa-api
+    spec:
+
+      {{- if .Values.api.initContainers.enabled }}
+      initContainers:
+
+        {{- if .Values.api.initContainers.mysql.enabled }}
+        - name: wait-for-mysql
+          image: "{{ .Values.api.initContainers.image.repository }}:{{ .Values.api.initContainers.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MySQL..."
+
+              until nc -z {{ .Values.api.env.mysql.host }} {{ .Values.api.env.mysql.port }}; do
+                echo "MySQL not ready..."
+                sleep 2
+              done
+
+              echo "MySQL reachable"
+        {{- end }}
+
+        {{- if .Values.api.initContainers.redis.enabled }}
+        - name: wait-for-redis
+          image: "{{ .Values.api.initContainers.image.repository }}:{{ .Values.api.initContainers.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis..."
+
+              until nc -z {{ .Values.api.initContainers.redis.host }} {{ .Values.api.initContainers.redis.port }}; do
+                echo "Redis not ready..."
+                sleep 2
+              done
+
+              echo "Redis reachable"
+        {{- end }}
+
+        {{- if .Values.api.initContainers.minio.enabled }}
+        - name: wait-for-minio
+          image: "{{ .Values.api.initContainers.image.repository }}:{{ .Values.api.initContainers.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MinIO..."
+
+              until nc -z {{ .Values.api.initContainers.minio.host }} {{ .Values.api.initContainers.minio.port }}; do
+                echo "MinIO not ready..."
+                sleep 2
+              done
+
+              echo "MinIO reachable"
+        {{- end }}
+
+      {{- end }}
+
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          ports:
+            - containerPort: {{ .Values.api.containerPort }}
+          env:
+            - name: PORT
+              value: {{ .Values.api.env.port | quote }}
+
+            - name: DB_HOST
+              value: {{ .Values.api.env.mysql.host | quote }}
+
+            - name: DB_PORT
+              value: {{ .Values.api.env.mysql.port | quote }}
+
+            - name: DB_NAME
+              value: {{ .Values.mysql.auth.database | quote }}
+
+            - name: DB_USER
+              value: {{ .Values.mysql.auth.username | quote }}
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secret.name }}
+                  key: mysql-password
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secret.name }}
+                  key: JWT_SECRET
+
+            - name: MINIO_ENDPOINT
+              value: {{ .Values.api.env.minio.endpoint | quote }}
+
+            - name: MINIO_PUBLIC_ENDPOINT
+              value: {{ .Values.api.env.minio.publicEndpoint | quote }}
+
+            - name: MINIO_ACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secret.name }}
+                  key: MINIO_ACCESSKEY
+
+            - name: MINIO_SECRETKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secret.name }}
+                  key: MINIO_SECRETKEY
+
+            - name: MINIO_BUCKETNAME
+              value: {{ (index .Values.minio.provisioning.buckets 0).name | quote }}
+
+            - name: REDIS_ENDPOINT
+              value: {{ .Values.api.env.redis.endpoint | quote }}
+
+            - name: REDIS_DB
+              value: {{ .Values.api.env.redis.db | quote }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.api.probes.readiness.path }}
+              port: {{ .Values.api.containerPort }}
+
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 20
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.api.probes.liveness.path }}
+              port: {{ .Values.api.containerPort }}
+
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5

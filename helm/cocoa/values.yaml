@@ -1,0 +1,115 @@
+
+api:
+  replicaCount: 1
+
+  image:
+    repository: huan271/cocoa
+    tag: "10"
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      memory: "812Mi"
+      cpu: "300m"
+    requests:
+      memory: "256Mi"
+      cpu: "300m"
+
+  containerPort: 8080
+
+  env:
+    port: "8080"
+
+    mysql:
+      host: cocoa-mysql
+      port: "3306"
+
+    redis:
+      endpoint: cocoa-redis:6379
+      db: "8"
+
+    minio:
+      endpoint: cocoa-minio:9000
+      publicEndpoint: localhost:9000
+
+  secret:
+    name: helpdeskcocoa-secret
+
+  probes:
+    readiness:
+      path: /api/v1/health/ready
+
+
+    liveness:
+      path: /api/v1/health/ready
+
+
+  initContainers:
+    enabled: true
+
+    image:
+      repository: busybox
+      tag: "1.36"
+
+    mysql:
+      enabled: true
+
+    redis:
+      enabled: true
+      host: cocoa-redis
+      port: 6379
+
+    minio:
+      enabled: true
+      host: cocoa-minio
+      port: 9000
+
+mysql:
+  architecture: standalone
+
+  auth:
+    database: cocoa
+    username: huan
+    existingSecret: helpdeskcocoa-secret
+
+  primary:
+    persistence:
+      enabled: true
+      size: 7Gi
+  
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mysql
+    tag: 9.4.0-debian-12-r1
+
+redis:
+  architecture: standalone
+
+  auth:
+    enabled: false
+
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+
+    resourcesPreset: "nano"
+
+minio:
+  mode: standalone
+
+  auth:
+    existingSecret: "helpdeskcocoa-secret"
+    rootUserSecretKey: "MINIO_ACCESSKEY"
+    rootPasswordSecretKey: "MINIO_SECRETKEY"
+
+  provisioning:
+    enabled: true
+    buckets:
+      - name: "helpdeskcocoa-bucket" 
+
+  resourcesPreset: "nano"
+  persistence:
+    enabled: true
+    size: 5Gi
+
