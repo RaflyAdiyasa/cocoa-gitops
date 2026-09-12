@@ -3,5 +3,5 @@ secret.yaml
 secret.yaml.example
 trashbin
 
-infra
+
 helm/cocoa/charts/*
